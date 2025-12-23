@@ -1,0 +1,42 @@
+---
+# Tasks for installing and running the sample Node.js app
+
+- name: Add NodeSource GPG key
+  ansible.builtin.apt_key:
+    url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+    state: present
+
+- name: Add NodeSource repository
+  ansible.builtin.apt_repository:
+    repo: "deb https://deb.nodesource.com/node_lts.x {{ ansible_distribution_release }} main"
+    state: present
+    filename: nodesource
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install Node.js
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+
+- name: Copy sample app
+  ansible.builtin.copy:
+    src: app.js
+    dest: /home/vagrant/app.js
+    owner: vagrant
+    group: vagrant
+    mode: '0644'
+
+- name: Check if app is already running
+  ansible.builtin.shell: pgrep -f "node.*app.js" || true
+  register: app_running
+  changed_when: false
+
+- name: Start sample app
+  ansible.builtin.shell: nohup node /home/vagrant/app.js > /home/vagrant/app.log 2>&1 &
+  args:
+    chdir: /home/vagrant
+  become_user: vagrant
+  when: app_running.stdout == ""

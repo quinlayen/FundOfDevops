@@ -1,0 +1,26 @@
+Vagrant.configure("2") do |config|
+  # Disable vbguest plugin to avoid compatibility issues
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    config.vbguest.auto_update = false
+  end
+
+  # Use Ubuntu 22.04 LTS as the base box
+  config.vm.box = "ubuntu/jammy64"
+
+  # Forward port 8080 from the VM to port 8080 on the host
+  config.vm.network "forwarded_port", guest: 8080, host: 8080
+
+  # Configure VM resources
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+    vb.cpus = 1
+  end
+
+  # Provision using Ansible
+  config.vm.provision "ansible_local" do |ansible|
+    ansible.playbook = "playbook.yml"
+    ansible.verbose = false
+    ansible.install = true
+    ansible.install_mode = "pip"
+  end
+end

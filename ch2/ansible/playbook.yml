@@ -1,0 +1,8 @@
+---
+- name: Configure the VM to run a sample app
+  hosts: all
+  gather_facts: true
+  become: true
+
+  roles:
+    - sample-app

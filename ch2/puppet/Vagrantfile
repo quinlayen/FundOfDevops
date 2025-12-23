@@ -1,0 +1,51 @@
+Vagrant.configure("2") do |config|
+  # Disable vbguest plugin to avoid compatibility issues
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    config.vbguest.auto_update = false
+  end
+
+  # Use Ubuntu 22.04 LTS as the base box
+  config.vm.box = "ubuntu/jammy64"
+
+  # Forward port 8080 from the VM to port 8080 on the host
+  config.vm.network "forwarded_port", guest: 8080, host: 8080
+
+  # Configure VM resources
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+    vb.cpus = 1
+  end
+
+  # Install Puppet and required modules before provisioning
+  config.vm.provision "shell", inline: <<-SHELL
+    # Install Puppet if not already installed
+    if ! command -v puppet &> /dev/null; then
+      echo "Installing Puppet..."
+      wget https://apt.puppet.com/puppet7-release-jammy.deb
+      dpkg -i puppet7-release-jammy.deb
+      apt-get update
+      apt-get install -y puppet-agent
+      ln -sf /opt/puppetlabs/bin/puppet /usr/bin/puppet
+    fi
+
+    # Install puppetlabs-apt module (required for apt::key and apt::source)
+    if ! puppet module list | grep -q puppetlabs-apt; then
+      echo "Installing puppetlabs-apt module..."
+      puppet module install puppetlabs-apt --version 9.4.0
+    fi
+
+    # Install puppetlabs-stdlib module (dependency)
+    if ! puppet module list | grep -q puppetlabs-stdlib; then
+      echo "Installing puppetlabs-stdlib module..."
+      puppet module install puppetlabs-stdlib --version 9.6.0
+    fi
+  SHELL
+
+  # Provision using Puppet
+  config.vm.provision "puppet" do |puppet|
+    puppet.manifests_path = "manifests"
+    puppet.manifest_file = "default.pp"
+    puppet.module_path = "modules"
+    puppet.options = "--verbose"
+  end
+end
